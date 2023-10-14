@@ -1,17 +1,25 @@
-package com.apache.twitter.storm;
+package com.twitter.storm;
+
 
 import java.util.*;
 
 import org.apache.storm.tuple.Fields;
-import org.apache.storm.tuple.Values;
+
+import com.twitter.storm.bolts.HashtagCounterBolt;
+import com.twitter.storm.bolts.HashtagReaderBolt;
+import com.twitter.storm.spouts.TwitterSampleSpout;
+
 import org.apache.storm.Config;
-import org.apache.storm.LocalCluster;
+import org.apache.storm.topology.ConfigurableTopology;
 import org.apache.storm.topology.TopologyBuilder;
 
-import com.apache.twitter.storm.spouts.TwitterSampleSpout;
-
-public class TwitterFeedTopology {
+public class TwitterFeedTopology extends ConfigurableTopology{
    public static void main(String[] args) throws Exception{
+      ConfigurableTopology.start(new TwitterFeedTopology(), args);
+   }
+
+   @Override
+   protected int run(String[] args) {
       String consumerKey = args[0];
       String consumerSecret = args[1];
 		
@@ -33,12 +41,7 @@ public class TwitterFeedTopology {
 
       builder.setBolt("twitter-hashtag-counter-bolt", new HashtagCounterBolt())
          .fieldsGrouping("twitter-hashtag-reader-bolt", new Fields("hashtag"));
-			
-      try(LocalCluster cluster = new LocalCluster()) {
-          cluster.submitTopology("TwitterHashtagStorm", config,
-             builder.createTopology());
-          Thread.sleep(10000);
-      }
-    //   cluster.shutdown();
+
+      return submit("twitter", config, builder);
    }
 }

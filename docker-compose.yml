@@ -8,6 +8,8 @@ services:
 
   nimbus:
     image: storm
+    networks:
+      - storm-network
     container_name: nimbus
     command: storm nimbus
     depends_on:
@@ -43,3 +45,7 @@ services:
       - nimbus
       - zookeeper
     restart: always
+
+networks:
+  storm-network:
+    external: true

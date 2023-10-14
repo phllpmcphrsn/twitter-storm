@@ -1,18 +1,15 @@
-package com.apache.twitter.storm.spouts;
+package com.twitter.storm.spouts;
 
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import twitter4j.FilterQuery;
-import twitter4j.StallWarning;
-import twitter4j.Status;
-import twitter4j.StatusDeletionNotice;
-import twitter4j.StatusListener;
-
-import twitter4j.TwitterStream;
-import twitter4j.TwitterStreamFactory;
-import twitter4j.auth.AccessToken;
-import twitter4j.conf.ConfigurationBuilder;
+import twitter4j.v1.FilterQuery;
+import twitter4j.v1.RawStreamListener;
+import twitter4j.v1.Status;
+import twitter4j.v1.StatusDeletionNotice;
+import twitter4j.v1.StatusListener;
+import twitter4j.Twitter;
+import twitter4j.v1.TwitterStream;
 
 import org.apache.storm.Config;
 import org.apache.storm.spout.SpoutOutputCollector;
@@ -54,46 +51,25 @@ public class TwitterSampleSpout extends BaseRichSpout {
         SpoutOutputCollector collector) {
             queue = new LinkedBlockingQueue<Status>(1000);
             _collector = collector;
-            StatusListener listener = new StatusListener() {
+            _twitterStream = Twitter.newBuilder().listener(new RawStreamListener() {
                 @Override
-                public void onStatus(Status status) {
-                queue.offer(status);
+                public void onMessage(String rawJson) {
+                    System.out.println(rawJson);
                 }
-                        
+
                 @Override
-                public void onDeletionNotice(StatusDeletionNotice sdn) {}
-                        
-                @Override
-                public void onTrackLimitationNotice(int i) {}
-                        
-                @Override
-                public void onScrubGeo(long l, long l1) {}
-                        
-                @Override
-                public void onException(Exception ex) {}
-                        
-                @Override
-                public void onStallWarning(StallWarning arg0) {
-                // TODO Auto-generated method stub
+                public void onException(Exception ex) {
+                    ex.printStackTrace();
                 }
-            };
-                    
-            ConfigurationBuilder cb = new ConfigurationBuilder();
-                    
-            cb.setDebugEnabled(true)
-                .setOAuthConsumerKey(consumerKey)
-                .setOAuthConsumerSecret(consumerSecret)
-                .setOAuthAccessToken(accessToken)
-                .setOAuthAccessTokenSecret(accessTokenSecret);
-                        
-            _twitterStream = new TwitterStreamFactory(cb.build()).getInstance();
-            _twitterStream.addListener(listener);
+            })
+            .oAuthConsumer(consumerKey, consumerSecret)
+            .oAuthAccessToken(accessToken, accessTokenSecret)
+            .build().v1().stream().sample();
                     
             if (keyWords.length == 0) {
                 _twitterStream.sample();
             }else {
-                FilterQuery query = new FilterQuery().track(keyWords);
-                _twitterStream.filter(query);
+                _twitterStream.filter(FilterQuery.ofTrack(keyWords));
             }
     }
                 
